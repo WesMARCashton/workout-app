@@ -1,5 +1,5 @@
-const CACHE = 'workout-v1';
-const ASSETS = ['./', 'index.html', 'app.js', 'styles.css', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const CACHE = 'workout-v2';
+const ASSETS = ['./', 'index.html', 'app.js?v=2', 'styles.css', 'manifest.json', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(ASSETS)));
   self.skipWaiting();

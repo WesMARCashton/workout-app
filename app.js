@@ -144,10 +144,26 @@ async function keepAwake(on) {
 function render() {
   clearInterval(tick);
   const app = $('#app');
-  if (view === 'workout' && db.active) { app.innerHTML = workoutHTML(); keepAwake(true); }
-  else if (view === 'summary' && summary) { app.innerHTML = summaryHTML(); keepAwake(false); }
-  else { view = 'home'; app.innerHTML = homeHTML(); keepAwake(false); }
-  if (db.active) startTick();
+  try {
+    if (view === 'workout' && db.active) { app.innerHTML = workoutHTML(); keepAwake(true); }
+    else if (view === 'summary' && summary) { app.innerHTML = summaryHTML(); keepAwake(false); }
+    else { view = 'home'; app.innerHTML = homeHTML(); keepAwake(false); }
+    if (db.active) startTick();
+  } catch (err) {
+    app.innerHTML = recoverHTML(err);
+  }
+}
+
+// Shown if a screen fails to draw. Data is never deleted from here without a backup option.
+function recoverHTML(err) {
+  return `<section class="sum">
+    <h1>Something broke.</h1>
+    <p class="muted">Error: ${String(err && err.message || err).replace(/</g, '&lt;')}</p>
+    <p class="muted">Your history is still saved. Try these in order.</p>
+    <button class="big" data-act="export">1. Export backup</button>
+    <button class="big" data-act="fixActive">2. Close current workout</button>
+    <button class="big" data-act="reload">3. Reload app</button>
+  </section>`;
 }
 
 function startTick() {
@@ -386,6 +402,15 @@ const H = {
     setTimeout(() => URL.revokeObjectURL(u), 2000);
   },
   import() { $('#importFile').click(); },
+  fixActive() { db.active = null; save(); view = 'home'; render(); toast('Workout closed'); },
+  async reload() {
+    try {
+      const regs = await navigator.serviceWorker.getRegistrations();
+      await Promise.all(regs.map(r => r.unregister()));
+      const ks = await caches.keys(); await Promise.all(ks.map(k => caches.delete(k)));
+    } catch (e) {}
+    location.reload();
+  },
 };
 
 document.addEventListener('click', ev => {

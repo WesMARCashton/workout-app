@@ -18,7 +18,14 @@
 <main id="app"></main>
 <div id="toast" role="status"></div>
 <div id="pb" hidden><div class="pbcard"><small>New personal best</small><h2 id="pbName"></h2><p id="pbMsg"></p></div></div>
-<script src="app.js"></script>
+<script>
+// If app.js fails before drawing anything, show the error instead of a blank screen.
+window.addEventListener('error', function (e) {
+  var a = document.getElementById('app');
+  if (a && !a.innerHTML.trim()) a.innerHTML = '<div style="padding:40px 0"><h2>App failed to start</h2><p style="color:#8b9098">' + String(e.message || 'Unknown error').replace(/</g, '&lt;') + '</p><button onclick="location.reload()" style="padding:14px 20px">Reload</button></div>';
+});
+</script>
+<script src="app.js?v=2"></script>
 <script>
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
