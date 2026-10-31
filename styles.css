@@ -153,3 +153,6 @@ label.chip input { display: none; }
 .form label { display: block; margin: 14px 0 0; font-size: 14px; color: var(--muted); }
 .form .row { border-bottom: 0; color: var(--text); }
 .sw { width: 24px; height: 24px; accent-color: var(--accent); }
+.bar .ghost[aria-label=Home] { font-size: 22px; padding: 6px 14px; }
+.bar .cancel { color: var(--muted); font-size: 14px; padding: 10px 8px; border-color: transparent; }
+.bar .clock { flex: 1; }

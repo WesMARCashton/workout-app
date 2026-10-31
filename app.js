@@ -30,7 +30,7 @@ let db = null;
 try { db = JSON.parse(localStorage.getItem(KEY)); } catch (e) { db = null; }
 if (!db || !Array.isArray(db.sessions)) db = { sessions: [], active: null, unit: 'lb' };
 if (!Array.isArray(db.exercises)) db.exercises = DEFAULT_EX.map(e => ({ ...e }));
-if (db.rest == null) db.rest = 60;
+if (db.rest == null || db.restEvery == null) { db.rest = 30; db.restEvery = 4; }
 if (db.active) {
   if (!db.active.entries || typeof db.active.entries !== 'object') db.active.entries = {};
   if (!db.active.pbs) db.active.pbs = {};
@@ -311,7 +311,8 @@ function settingsHTML() {
   const chips = (act, key, opts, cur) => opts.map(([v, l]) => `<button class="chip ${cur === v ? 'on' : ''}" data-act="${act}" data-v="${v}">${l}</button>`).join('');
   return `<details class="panel"><summary>Settings and backup</summary>
     <button class="wide" data-act="manage">Edit exercises</button>
-    <div class="row"><span>Rest timer</span><b class="chips">${chips('rest', 'rest', [[0, 'Off'], [30, '30s'], [45, '45s'], [60, '60s'], [90, '90s']], db.rest)}</b></div>
+    <div class="row"><span>Rest length</span><b class="chips">${chips('rest', 'rest', [[0, 'Off'], [30, '30s'], [45, '45s'], [60, '60s'], [90, '90s']], db.rest)}</b></div>
+    ${db.rest ? `<div class="row"><span>Rest every</span><b class="chips">${chips('restEvery', 'restEvery', [[1, '1'], [2, '2'], [3, '3'], [4, '4'], [5, '5'], [6, '6']], db.restEvery)}</b></div><p class="muted">Rest after every ${db.restEvery} exercise${db.restEvery === 1 ? '' : 's'} logged.</p>` : ''}
     <div class="row"><span>Weight unit</span><b class="chips">${chips('unit', 'unit', [['lb', 'lb'], ['kg', 'kg']], db.unit)}</b></div>
     <div class="btns"><button data-act="export">Export backup</button><button data-act="import">Import backup</button></div>
     <p class="muted">Data lives on this phone only. Export a backup now and then.</p>
@@ -350,14 +351,15 @@ function workoutHTML() {
   const cur = EX.find(ex => !a.entries[ex.id]);
   return `
   <div class="bar">
-    <button class="ghost" data-act="home">Home</button>
+    <button class="ghost" data-act="home" aria-label="Home">‹</button>
+    <button class="ghost cancel" data-act="discard">Cancel</button>
     <div class="clock"><span id="elapsed">${fmtT((Date.now() - a.start) / 1000)}</span><small>${done}/${EX.length} done</small></div>
     <button class="primary" data-act="finish">Finish</button>
   </div>
   <div class="prog"><i style="width:${EX.length ? done / EX.length * 100 : 0}%"></i></div>
   <div class="cards">${EX.map((ex, i) => cardHTML(ex, i, cur && cur.id === ex.id)).join('')}</div>
   <label class="notes">Workout notes<textarea data-act-input="note" rows="2" placeholder="How did it feel? Anything sore?">${esc(a.note || '')}</textarea></label>
-  <button class="ghost danger wide" data-act="discard">Discard workout</button>
+  <button class="ghost danger wide" data-act="discard">Cancel workout</button>
   <div id="rest" class="rest" hidden><span>Rest</span><b id="restClock">0:00</b><button data-act="restAdd">+15s</button><button class="primary" data-act="restSkip">Skip</button></div>`;
 }
 
@@ -468,7 +470,9 @@ function checkPB(ex, e) {
   return false;
 }
 function startRest() {
-  if (db.rest > 0) db.active.restEnd = Date.now() + db.rest * 1000;
+  const a = db.active;
+  a.sinceRest = (a.sinceRest || 0) + 1;
+  if (db.rest > 0 && a.sinceRest >= (db.restEvery || 1)) { a.restEnd = Date.now() + db.rest * 1000; a.sinceRest = 0; }
 }
 function afterLog(id, pb) {
   const remaining = EX.some(ex => !db.active.entries[ex.id]);
@@ -538,7 +542,7 @@ const H = {
     if (summary.fastPB) celebrate('Full workout', `${fmtT(dur / 1000)} <i>(was ${fmtT(prevFast / 1000)})</i>`);
   },
   discard() {
-    if (!confirm('Discard this workout? Nothing will be saved.')) return;
+    if (Object.keys(db.active.entries).length && !confirm('Cancel this workout? Nothing will be saved.')) return;
     db.active = null; save(); go('home');
   },
   del(b) {
@@ -547,6 +551,7 @@ const H = {
   },
   unit(b) { db.unit = b.dataset.v; save(); render(); },
   rest(b) { db.rest = +b.dataset.v; save(); render(); },
+  restEvery(b) { db.restEvery = +b.dataset.v; save(); render(); },
   openEx(b) { exView = b.dataset.ex; go('ex'); },
   manage() { go('manage'); },
   editEx(b) { editId = b.dataset.ex; go('edit'); },
